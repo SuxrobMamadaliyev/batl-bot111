@@ -27,44 +27,52 @@ app.get('/index.html', (req, res, next) => {
   }
 });
 
-// Webhook endpoint for Telegram (handler will be attached after bot is initialized)
+// Webhook endpoint for Telegram
 const WEBHOOK_PATH = '/webhook';
 let bot; // will be set after initialization
 
-// Use Render's PORT or default to 3000 for local development
-const PORT = process.env.PORT || 3000;
+// Use Render's PORT or default to 10000 for Render
+const PORT = process.env.PORT || 10000;
 
 // Check if running on Render
 const IS_RENDER = process.env.RENDER === 'true';
+
+// Webhook endpoint - defined at app level
+app.post(WEBHOOK_PATH, (req, res) => {
+  if (!bot) {
+    console.log('Bot not initialized yet, skipping update');
+    return res.sendStatus(200);
+  }
+  try {
+    bot.processUpdate(req.body);
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('Webhook xatosi:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
 // Async function to initialize bot and set up webhook
 async function initializeBot() {
   try {
     // Initialize bot
+    console.log('🤖 Botni ishga tushirish...');
     const { bot: botInstance } = require('./main');
     bot = botInstance;
+    
+    console.log('✅ Bot muvaffaqiyatli yuklandi');
 
     // Use Render's external URL for webhook if available
     const baseUrl = process.env.RENDER_EXTERNAL_URL;
     
-    if (baseUrl) {
+    if (baseUrl && IS_RENDER) {
       const fullWebhookUrl = `${baseUrl.replace(/\/$/, '')}${WEBHOOK_PATH}`;
       
       try {
+        console.log(`🌐 Webhook o'rnatilmoqda: ${fullWebhookUrl}`);
         // Set webhook for the bot
         await bot.setWebHook(fullWebhookUrl);
-        console.log(`✅ Webhook muvaffaqiyatli o'rnatildi: ${fullWebhookUrl}`);
-        
-        // Webhook endpoint for Telegram
-        app.post(WEBHOOK_PATH, (req, res) => {
-          try {
-            bot.processUpdate(req.body);
-            res.sendStatus(200);
-          } catch (error) {
-            console.error('Webhook xatosi:', error);
-            res.status(500).send('Internal Server Error');
-          }
-        });
-        
+        console.log(`✅ Webhook muvaffaqiyatli o'rnatildi`);
         console.log('🤖 Bot webhook orqali ishga tushirildi');
       } catch (webhookError) {
         console.error('❌ Webhook o\'rnatishda xatolik:', webhookError.message);
@@ -72,11 +80,10 @@ async function initializeBot() {
         bot.startPolling();
       }
     } else {
-      console.log('ℹ️ RENDER_EXTERNAL_URL mavjud emas. Polling rejimida ishga tushirilmoqda...');
+      console.log('ℹ️ Webhook URL topilmadi yoki Render muhitida emas. Polling rejimida ishga tushirilmoqda...');
       bot.startPolling();
     }
     
-    // Bot ishga tushganini bildirish
     console.log(`🤖 ${new Date().toLocaleString()} - Bot muvaffaqiyatli ishga tushdi`);
     
   } catch (err) {
