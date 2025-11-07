@@ -31,9 +31,9 @@ bot.onText(/\/start/, (msg) => {
     {
       reply_markup: {
         keyboard: [
-          [{ text: '🎮 Yangi jang' }],
-          [{ text: '📊 Mening statistikam' }, { text: '🏆 Reyting' }],
-          [{ text: 'ℹ️ Yordam' }]
+          [{ text: '🛠 Battle Yaratish' }, { text: '⚔️ Battlelar' }],
+          [{ text: '📲 Kabinet' }, { text: '📊 Statistika' }],
+          [{ text: '📋 Ma\'lumotlar' }, { text: '📞 Admin' }]
         ],
         resize_keyboard: true,
         one_time_keyboard: false
