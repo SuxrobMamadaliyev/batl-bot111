@@ -72,16 +72,15 @@ async function initializeBot() {
         console.log(`🌐 Webhook o'rnatilmoqda: ${fullWebhookUrl}`);
         // Set webhook for the bot
         await bot.setWebHook(fullWebhookUrl);
-        console.log(`✅ Webhook muvaffaqiyatli o'rnatildi`);
         console.log('🤖 Bot webhook orqali ishga tushirildi');
       } catch (webhookError) {
         console.error('❌ Webhook o\'rnatishda xatolik:', webhookError.message);
         console.log('❌ Webhook o\'rnatib bo\'lmadi, polling rejimida ishga tushirilmoqda...');
-        bot.startPolling();
+        await bot.startPolling();
       }
     } else {
       console.log('ℹ️ Webhook URL topilmadi yoki Render muhitida emas. Polling rejimida ishga tushirilmoqda...');
-      bot.startPolling();
+      await bot.startPolling();
     }
     
     console.log(`🤖 ${new Date().toLocaleString()} - Bot muvaffaqiyatli ishga tushdi`);
