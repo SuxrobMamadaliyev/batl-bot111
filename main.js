@@ -15,7 +15,44 @@ const ADMINS = process.env.ADMIN_IDS ? process.env.ADMIN_IDS.split(',').map(id =
 // Botni ishga tushirish
 const bot = new TelegramBot(TOKEN, { 
   polling: false, // Polling ni o'chirib qo'yamiz, chunki webhook ishlatamiz
-  webHook: false  // Webhook ni o'zimiz sozlaymiz
+  webHook: false,  // Webhook ni o'zimiz sozlaymiz
+  onlyFirstMatch: true
+});
+
+// /start komandasi
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id;
+  const firstName = msg.from?.first_name || 'Foydalanuvchi';
+  
+  bot.sendMessage(
+    chatId,
+    `👋 Salom ${firstName}! \n\n` +
+    `Men Battle Botman! Men bilan jang qilish uchun /battle buyrug'ini bosing yoki /help yordam olish uchun.`,
+    {
+      reply_markup: {
+        keyboard: [
+          [{ text: '🎮 Yangi jang' }],
+          [{ text: '📊 Mening statistikam' }, { text: '🏆 Reyting' }],
+          [{ text: 'ℹ️ Yordam' }]
+        ],
+        resize_keyboard: true,
+        one_time_keyboard: false
+      }
+    }
+  );
+});
+
+// Help command
+bot.onText(/\/help/, (msg) => {
+  const chatId = msg.chat.id;
+  const helpText = `🤖 *Battle Bot Yordam* \n\n` +
+    `🎮 *Yangi jang* - /battle - Yangi jang boshlash\n` +
+    `📊 *Statistika* - /mystats - Shaxsiy statistika\n` +
+    `🏆 *Reyting* - /top - Eng yaxshi o'yinchilar\n` +
+    `ℹ️ *Yordam* - /help - Yordam olish\n\n` +
+    `Botdan to'liq foydalanish uchun guruhga qo'shing va /battle buyrug'i orqali jang boshlang!`;
+  
+  bot.sendMessage(chatId, helpText, { parse_mode: 'Markdown' });
 });
 
 // Webhook sozlamalari
