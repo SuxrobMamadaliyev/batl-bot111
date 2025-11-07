@@ -26,9 +26,9 @@ bot.onText(/\/start/, (msg) => {
   
   bot.sendMessage(
     chatId,
-    `👋 Salom ${firstName}! \n\n` +
-    `Men Battle Botman! Men bilan jang qilish uchun /battle buyrug'ini bosing yoki /help yordam olish uchun.`,
-    {
+    `🎮 *Battle Botga xush kelibsiz!* \n\n` +
+    `Quyidagi tugmalar orqali botdan foydalanishingiz mumkin:`,
+    { parse_mode: 'Markdown',
       reply_markup: {
         keyboard: [
           [{ text: '🛠 Battle Yaratish' }, { text: '⚔️ Battlelar' }],
