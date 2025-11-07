@@ -39,16 +39,25 @@ const IS_RENDER = process.env.RENDER === 'true';
 
 // Webhook endpoint - defined at app level
 app.post(WEBHOOK_PATH, (req, res) => {
+  console.log('📨 Webhook update received:', JSON.stringify({
+    update_id: req.body.update_id,
+    message: req.body.message ? 'message received' : 'no message',
+    callback_query: req.body.callback_query ? 'callback received' : 'no callback'
+  }));
+  
   if (!bot) {
-    console.log('Bot not initialized yet, skipping update');
+    console.log('❌ Bot not initialized yet, skipping update');
     return res.sendStatus(200);
   }
+  
   try {
+    // Process the update
     bot.processUpdate(req.body);
     res.sendStatus(200);
   } catch (error) {
-    console.error('Webhook xatosi:', error);
-    res.status(500).send('Internal Server Error');
+    console.error('❌ Webhook error:', error);
+    console.error('Error details:', error.stack);
+    res.status(200).send('OK'); // Always return 200 to prevent Telegram from retrying
   }
 });
 
