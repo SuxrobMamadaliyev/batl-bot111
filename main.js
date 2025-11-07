@@ -24,20 +24,30 @@ bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   const firstName = msg.from?.first_name || 'Foydalanuvchi';
   
+  const inlineKeyboard = {
+    inline_keyboard: [
+      [
+        { text: '🛠 Battle Yaratish', callback_data: 'create_battle' },
+        { text: '⚔️ Battlelar', callback_data: 'battle_list' }
+      ],
+      [
+        { text: '📲 Kabinet', callback_data: 'cabinet' },
+        { text: '📊 Statistika', callback_data: 'stats' }
+      ],
+      [
+        { text: '📋 Ma\'lumotlar', callback_data: 'info' },
+        { text: '📞 Admin', callback_data: 'admin' }
+      ]
+    ]
+  };
+
   bot.sendMessage(
     chatId,
     `🎮 *Battle Botga xush kelibsiz!* \n\n` +
     `Quyidagi tugmalar orqali botdan foydalanishingiz mumkin:`,
-    { parse_mode: 'Markdown',
-      reply_markup: {
-        keyboard: [
-          [{ text: '🛠 Battle Yaratish' }, { text: '⚔️ Battlelar' }],
-          [{ text: '📲 Kabinet' }, { text: '📊 Statistika' }],
-          [{ text: '📋 Ma\'lumotlar' }, { text: '📞 Admin' }]
-        ],
-        resize_keyboard: true,
-        one_time_keyboard: false
-      }
+    { 
+      parse_mode: 'Markdown',
+      reply_markup: inlineKeyboard
     }
   );
 });
@@ -151,25 +161,32 @@ const stickerIds = [
 const BOT_NAME = 'BattleForge';
 const BOT_VERSION = '1.0.0';
 
-// Asosiy menyu tugmalari
-const mainKeyboard = {
-  keyboard: [
-    [{ text: '🛠 Battle Yaratish' }, { text: '⚔️ Battlelar' }],
-    [{ text: '📲 Kabinet' }, { text: '📊 Statistika' }],
-    [{ text: '📋 Ma\'lumotlar' }, { text: '📞 Admin' }],
-  ],
-  resize_keyboard: true
+// Asosiy menyu inline tugmalari
+const mainInlineKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '🛠 Battle Yaratish', callback_data: 'create_battle' },
+      { text: '⚔️ Battlelar', callback_data: 'battle_list' }
+    ],
+    [
+      { text: '📲 Kabinet', callback_data: 'cabinet' },
+      { text: '📊 Statistika', callback_data: 'stats' }
+    ],
+    [
+      { text: '📋 Ma\'lumotlar', callback_data: 'info' },
+      { text: '📞 Admin', callback_data: 'admin' }
+    ]
+  ]
 };
 
-// Battle turlari
+// Battle turlari inline tugmalari
 const battleTypeKeyboard = {
-  keyboard: [
-    [{ text: '❤️ Reaksiya Battle' }],
-    [{ text: 'Ovoz Battle' }],
-    [{ text: '🎮 Oddiy Battle' }],  // Oddiy Battle o'chirib qo'yildi
-    [{ text: '🔙 Orqaga' }]
-  ],
-  resize_keyboard: true
+  inline_keyboard: [
+    [{ text: '❤️ Reaksiya Battle', callback_data: 'battle_type_reaction' }],
+    [{ text: 'Ovoz Battle', callback_data: 'battle_type_vote' }],
+    [{ text: '🎮 Oddiy Battle', callback_data: 'battle_type_normal' }],
+    [{ text: '🔙 Orqaga', callback_data: 'back_to_main' }]
+  ]
 };
 
 // Star battle uchun foydalanuvchilarning ovozlari
@@ -2893,10 +2910,33 @@ bot.on('message', async (msg) => {
       await bot.sendMessage(chatId, 'Bekor qilindi.', { reply_markup: mainKeyboard });
       return;
     }
-    const battleId = text.trim(); // Remove parseInt validation
-    const foundBattle = battles.get(battleId);
+    
+    const battleId = text.trim();
+    
+    // Try to find the battle with the exact ID first
+    let foundBattle = battles.get(battleId);
+    
+    // If not found, try case-insensitive search
     if (!foundBattle) {
-      await bot.sendMessage(chatId, '❌ Ushbu ID bo\'yicha battle topilmadi.');
+      // Convert battle IDs to lowercase and search
+      const battleIdLower = battleId.toLowerCase();
+      for (const [id, battle] of battles.entries()) {
+        if (id.toLowerCase() === battleIdLower) {
+          foundBattle = battle;
+          break;
+        }
+      }
+    }
+    
+    if (!foundBattle) {
+      console.log(`Battle not found for ID: ${battleId}. Total battles in memory: ${battles.size}`);
+      await bot.sendMessage(chatId, 
+        '❌ Ushbu ID bo\'yicha battle topilmadi.\n\n' +
+        'Iltimos, quyidagilarni tekshiring:\n' +
+        '1. ID to\'g\'ri kiritilganligiga ishonch hosil qiling\n' +
+        '2. Battle hali ham mavjudligiga ishonch hosil qiling\n' +
+        '3. Yangi battle yaratish uchun /battle buyrug\'ini bosing'
+      );
       return;
     }
     const usernameNoAt = (foundBattle.channelUsername || foundBattle.channel || '').replace('@', '');
@@ -3044,6 +3084,7 @@ bot.onText(/\/balance/, (msg) => {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
   const profile = users.get(userId) || {};
+ 
 });
 
 console.log('🤖 Battle Bot ishga tushdi!');
