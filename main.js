@@ -12,19 +12,31 @@ if (!TOKEN) {
 // Adminlarni o'qib olish
 const ADMINS = process.env.ADMIN_IDS ? process.env.ADMIN_IDS.split(',').map(id => id.trim()) : [];
 
+// Botni ishga tushirish
 const bot = new TelegramBot(TOKEN, { 
-  polling: false, // Polling ni o'zimiz boshqaramiz
+  polling: false, // Polling ni o'chirib qo'yamiz, chunki webhook ishlatamiz
   webHook: false  // Webhook ni o'zimiz sozlaymiz
 });
 
-// Add webhook compatibility
+// Webhook sozlamalari
 bot.setWebHook = async (url) => {
-  return bot.telegram.setWebhook(url);
+  try {
+    // Avvalgi webhook'ni o'chirish
+    await bot.deleteWebHook();
+    // Yangi webhook'ni o'rnatish
+    const result = await bot.setWebHook(url);
+    console.log('Webhook muvaffaqiyatli o\'rnatildi:', url);
+    return result;
+  } catch (error) {
+    console.error('Webhook o\'rnatishda xatolik:', error.message);
+    throw error;
+  }
 };
 
+// Polling rejimida ishlatish uchun
 bot.startPolling = () => {
-  bot.startPolling();
-  console.log('Bot started in polling mode');
+  bot.start({ drop_pending_updates: true });
+  console.log('Bot polling rejimida ishga tushirildi');
 };
 
 // Export the bot instance
