@@ -21,22 +21,24 @@ const bot = new TelegramBot(TOKEN, {
 // Webhook sozlamalari
 bot.setWebHook = async (url) => {
   try {
+    console.log(`🌐 Webhook o'rnatilmoqda: ${url}`);
     // Avvalgi webhook'ni o'chirish
     await bot.deleteWebHook();
     // Yangi webhook'ni o'rnatish
-    const result = await bot.setWebHook(url);
-    console.log('Webhook muvaffaqiyatli o\'rnatildi:', url);
+    const result = await bot.telegram.setWebhook(url);
+    console.log('✅ Webhook muvaffaqiyatli o\'rnatildi');
     return result;
   } catch (error) {
-    console.error('Webhook o\'rnatishda xatolik:', error.message);
+    console.error('❌ Webhook o\'rnatishda xatolik:', error.message);
+    console.error('Xatolik tafsilotlari:', error.stack);
     throw error;
   }
 };
 
 // Polling rejimida ishlatish uchun
 bot.startPolling = () => {
-  bot.start({ drop_pending_updates: true });
-  console.log('Bot polling rejimida ishga tushirildi');
+  bot.startPolling({ drop_pending_updates: true });
+  console.log('🤖 Bot polling rejimida ishga tushirildi');
 };
 
 // Export the bot instance
