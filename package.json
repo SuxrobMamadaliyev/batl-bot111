@@ -1,0 +1,40 @@
+{
+  "name": "battle-forge-bot",
+  "version": "1.0.0",
+  "description": "Telegram Battle Bot - BattleForge",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "bot": "node main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "battle",
+    "game"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "node-telegram-bot-api": "^0.66.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/battle-forge-bot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/battle-forge-bot/issues"
+  },
+  "homepage": "https://github.com/yourusername/battle-forge-bot#readme"
+}

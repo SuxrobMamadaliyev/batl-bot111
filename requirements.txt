@@ -1,0 +1,7 @@
+# Asosiy kutubxonalar
+express@4.21.2
+dotenv@16.6.1
+node-telegram-bot-api@0.66.0
+
+# Rivojlanish uchun (Development Dependencies)
+nodemon@2.0.20
