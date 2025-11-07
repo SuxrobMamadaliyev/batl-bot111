@@ -2583,6 +2583,89 @@ bot.onText(/\/support(?:(?: (.*)|$))/, async (msg, match) => {
   }
 });
 
+// Handle inline button clicks
+bot.on('callback_query', async (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const messageId = callbackQuery.message.message_id;
+  const data = callbackQuery.data;
+  const userId = callbackQuery.from.id;
+  
+  try {
+    // Handle main menu buttons
+    switch(data) {
+      case 'create_battle':
+        await bot.sendMessage(chatId, 'Battle yaratish turini tanlang:', {
+          reply_markup: battleTypeKeyboard
+        });
+        return;
+        
+      case 'battle_list':
+        await bot.sendMessage(chatId, 'Battlelar ro\'yxati:');
+        // Add your battle list logic here
+        return;
+        
+      case 'cabinet':
+        await bot.sendMessage(chatId, 'Sizning kabinetingiz:');
+        // Add your cabinet logic here
+        return;
+        
+      case 'stats':
+        await bot.sendMessage(chatId, 'Sizning statistikangiz:');
+        // Add your stats logic here
+        return;
+        
+      case 'info':
+        await bot.sendMessage(chatId, 'Bot haqida ma\'lumot:');
+        // Add your info logic here
+        return;
+        
+      case 'admin':
+        await bot.sendMessage(chatId, 'Admin bilan bog\'lanish uchun: @admin_username');
+        return;
+        
+      case 'battle_type_reaction':
+        await bot.sendMessage(chatId, 'Reaksiya battle yaratish uchun kanal linkini yuboring:');
+        // Add your reaction battle creation logic here
+        return;
+        
+      case 'battle_type_vote':
+        await bot.sendMessage(chatId, 'Ovoz battle yaratish uchun kanal linkini yuboring:');
+        // Add your vote battle creation logic here
+        return;
+        
+      case 'battle_type_normal':
+        await bot.sendMessage(chatId, 'Oddiy battle yaratish uchun kanal linkini yuboring:');
+        // Add your normal battle creation logic here
+        return;
+        
+      case 'back_to_main':
+        await bot.sendMessage(chatId, 'Asosiy menyu:', {
+          reply_markup: mainInlineKeyboard
+        });
+        return;
+    }
+    
+    // If no match found, try to handle it with other handlers
+    if (data.startsWith('support_')) {
+      // This will be handled by the support callback handler below
+      return;
+    }
+    
+    // If we get here, the callback data wasn't recognized
+    await bot.answerCallbackQuery(callbackQuery.id, { text: 'Ushbu tugma hozircha ishlamaydi' });
+    
+  } catch (error) {
+    console.error('Error handling callback query:', error);
+    try {
+      await bot.answerCallbackQuery(callbackQuery.id, { 
+        text: 'Xatolik yuz berdi. Iltimos qayta urinib ko\'ring.' 
+      });
+    } catch (e) {
+      console.error('Error sending error message:', e);
+    }
+  }
+});
+
 // Handle inline button clicks for support
 bot.on('callback_query', async (callbackQuery) => {
   const chatId = callbackQuery.message.chat.id;
@@ -2591,8 +2674,8 @@ bot.on('callback_query', async (callbackQuery) => {
   const userId = callbackQuery.from.id;
   
   // Check if user is admin
+  const isAdmin = ADMINS.includes(userId.toString());
 
-  
   try {
     // Handle reply button
     if (data.startsWith('reply_')) {
@@ -3084,7 +3167,7 @@ bot.onText(/\/balance/, (msg) => {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
   const profile = users.get(userId) || {};
- 
+  bot.sendMessage(chatId, `💳 Hisobingiz: ${(profile.balance || 0).toLocaleString()} so\'m`);
 });
 
 console.log('🤖 Battle Bot ishga tushdi!');
