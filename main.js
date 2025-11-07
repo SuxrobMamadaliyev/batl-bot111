@@ -91,6 +91,31 @@ bot.startPolling = () => {
 // Export the bot instance
 module.exports = { bot };
 
+// Private guruh linklarini boshqarish uchun funksiya
+async function handlePrivateGroupLink(chatId, channelLink) {
+    try {
+        // Check if it's a private group link
+        if (channelLink.includes('+') || channelLink.includes('joinchat/')) {
+            await bot.sendMessage(chatId, 
+                '👥 <b>Yopiq guruh ID sini yuboring:</b>\n\n' +
+                '1. Guruhga kiring\n' +
+                '2. Guruh nomini bosing\n' +
+                '3. "ID" ni tanlang va nusxalang\n' +
+                '4. Shu yerga yuboring\n\n' +
+                'Misol: <code>-1001234567890</code>\n\n' +
+                '❌ Bekor qilish: /cancel', 
+                { parse_mode: 'HTML' }
+            );
+            return { isPrivate: true };
+        }
+        return { isPrivate: false };
+    } catch (error) {
+        console.error('Error handling private group link:', error);
+        await bot.sendMessage(chatId, '❌ Xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.');
+        return { isPrivate: false, error: true };
+    }
+}
+
 // Ma'lumotlar bazasi (xotirada)
 const users = new Map();
 const battles = new Map();
@@ -1494,6 +1519,15 @@ bot.on('message', async (msg) => {
       userState.battle_step = null;
       userState.creating_battle = null;
       return bot.sendMessage(chatId, '❌ Battle yaratish bekor qilindi.', { reply_markup: mainKeyboard });
+    }
+
+    // Check if it's a private group link
+    const privateCheck = await handlePrivateGroupLink(chatId, channelLink);
+    if (privateCheck.isPrivate) {
+      if (privateCheck.error) return;
+      userState.waiting_for_group_id = true;
+      userState.temp_channel_link = channelLink;
+      return;
     }
     
     // Kanal yoki guruh ID/username ni ajratib olish
@@ -3010,7 +3044,6 @@ bot.onText(/\/balance/, (msg) => {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
   const profile = users.get(userId) || {};
-  bot.sendMessage(chatId, `💳 Hisobingiz: ${(profile.balance || 0).toLocaleString()} so\'m`);
 });
 
 console.log('🤖 Battle Bot ishga tushdi!');
