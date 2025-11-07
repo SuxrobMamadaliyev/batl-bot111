@@ -22,23 +22,33 @@ const bot = new TelegramBot(TOKEN, {
 bot.setWebHook = async (url) => {
   try {
     console.log(`🌐 Webhook o'rnatilmoqda: ${url}`);
+    
     // Avvalgi webhook'ni o'chirish
     await bot.deleteWebHook();
-    // Yangi webhook'ni o'rnatish
-    const result = await bot.telegram.setWebhook(url);
-    console.log('✅ Webhook muvaffaqiyatli o\'rnatildi');
-    return result;
+    
+    // Telegram API orqali yangi webhook'ni o'rnatish
+    const webhookUrl = `https://api.telegram.org/bot${TOKEN}/setWebhook?url=${encodeURIComponent(url)}&drop_pending_updates=true`;
+    const response = await fetch(webhookUrl);
+    const result = await response.json();
+    
+    if (result.ok) {
+      console.log('✅ Webhook muvaffaqiyatli o\'rnatildi');
+      return result;
+    } else {
+      throw new Error(result.description || 'Noma\'lum xatolik yuz berdi');
+    }
   } catch (error) {
     console.error('❌ Webhook o\'rnatishda xatolik:', error.message);
-    console.error('Xatolik tafsilotlari:', error.stack);
     throw error;
   }
 };
 
 // Polling rejimida ishlatish uchun
 bot.startPolling = () => {
-  bot.startPolling({ drop_pending_updates: true });
-  console.log('🤖 Bot polling rejimida ishga tushirildi');
+  console.log('🔄 Bot polling rejimida ishga tushirilmoqda...');
+  bot.start({ drop_pending_updates: true })
+    .then(() => console.log('🤖 Bot polling rejimida muvaffaqiyatli ishga tushirildi'))
+    .catch(err => console.error('❌ Polling rejimida xatolik:', err));
 };
 
 // Export the bot instance
