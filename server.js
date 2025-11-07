@@ -45,25 +45,43 @@ async function initializeBot() {
 
     // Use Render's external URL for webhook if available
     const baseUrl = process.env.RENDER_EXTERNAL_URL;
+    
     if (baseUrl) {
       const fullWebhookUrl = `${baseUrl.replace(/\/$/, '')}${WEBHOOK_PATH}`;
       
-      // Set webhook for the bot
-      await bot.setWebHook(fullWebhookUrl);
-      console.log(`Webhook set to: ${fullWebhookUrl}`);
-      
-      // Add webhook endpoint
-      app.post(WEBHOOK_PATH, (req, res) => {
-        bot.processUpdate(req.body);
-        res.sendStatus(200);
-      });
+      try {
+        // Set webhook for the bot
+        await bot.setWebHook(fullWebhookUrl);
+        console.log(`✅ Webhook muvaffaqiyatli o'rnatildi: ${fullWebhookUrl}`);
+        
+        // Webhook endpoint for Telegram
+        app.post(WEBHOOK_PATH, (req, res) => {
+          try {
+            bot.processUpdate(req.body);
+            res.sendStatus(200);
+          } catch (error) {
+            console.error('Webhook xatosi:', error);
+            res.status(500).send('Internal Server Error');
+          }
+        });
+        
+        console.log('🤖 Bot webhook orqali ishga tushirildi');
+      } catch (webhookError) {
+        console.error('❌ Webhook o\'rnatishda xatolik:', webhookError.message);
+        console.log('❌ Webhook o\'rnatib bo\'lmadi, polling rejimida ishga tushirilmoqda...');
+        bot.startPolling();
+      }
     } else {
-      console.log('No RENDER_EXTERNAL_URL provided. Running in polling mode.');
-      // Start polling if no webhook URL is provided
+      console.log('ℹ️ RENDER_EXTERNAL_URL mavjud emas. Polling rejimida ishga tushirilmoqda...');
       bot.startPolling();
     }
+    
+    // Bot ishga tushganini bildirish
+    console.log(`🤖 ${new Date().toLocaleString()} - Bot muvaffaqiyatli ishga tushdi`);
+    
   } catch (err) {
-    console.error('Failed to initialize bot:', err);
+    console.error('❌ Botni ishga tushirishda xatolik:', err);
+    console.error('Xatolik tafsilotlari:', err.stack);
     process.exit(1);
   }
 }
