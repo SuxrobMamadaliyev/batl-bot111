@@ -51,6 +51,8 @@ bot.action('start_battle', async (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     currentBattle.status = 'active';
     currentBattle.stage = 1;
+    // Reset votes
+    currentBattle.participants.forEach(p => p.votes = 0);
     await sendBattlePost(ctx);
     ctx.reply("⚡ 1-Bosqich batl posti kanalga joylandi!");
 });
@@ -58,6 +60,13 @@ bot.action('start_battle', async (ctx) => {
 bot.action('next_stage', async (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     await checkStageAndProgress(ctx);
+});
+
+bot.action('stop_battle', async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    currentBattle.status = 'idle';
+    await ctx.telegram.sendMessage(CHANNEL_ID, `❌ Batl to'xtatildi.`, { parse_mode: 'Markdown' });
+    ctx.reply("Batl yakunlandi!");
 });
 
 // ================= BATL POSTINI KANALGA JO'NATISH =================
@@ -167,4 +176,13 @@ async function checkStageAndProgress(ctx) {
     }
 }
 
+// Error handling
+bot.catch((err, ctx) => {
+    console.log('Telegraf error', err);
+});
+
 bot.launch().then(() => console.log("🤖 Batl bot muvaffaqiyatli ishga tushdi!"));
+
+// Enable graceful stop
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
