@@ -1,40 +1,38 @@
 {
-  "name": "battle-forge-bot",
+  "name": "telegram-stars-battle-bot",
   "version": "1.0.0",
-  "description": "Telegram Battle Bot - BattleForge",
-  "main": "server.js",
+  "description": "Telegram Stars (XTR) tizimida ishlaydigan premium 3-bosqichli battle bot",
+  "main": "bot.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "bot": "node main.js",
+    "start": "node bot.js",
+    "dev": "nodemon bot.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
     "telegram",
     "bot",
+    "stars",
     "battle",
-    "game"
+    "xtr",
+    "telegraf"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "SuxrobMamadaliyev",
+  "license": "MIT",
   "dependencies": {
-    "dotenv": "^16.6.1",
-    "express": "^4.21.2",
-    "node-telegram-bot-api": "^0.66.0"
+    "telegraf": "^4.15.0",
+    "dotenv": "^16.3.1",
+    "mongoose": "^8.0.0",
+    "axios": "^1.6.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.20"
+    "nodemon": "^3.0.1"
   },
   "engines": {
-    "node": ">=14.0.0",
-    "npm": ">=6.0.0"
+    "node": "18.x",
+    "npm": ">=8.0.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/battle-forge-bot.git"
-  },
-  "bugs": {
-    "url": "https://github.com/yourusername/battle-forge-bot/issues"
-  },
-  "homepage": "https://github.com/yourusername/battle-forge-bot#readme"
+    "url": "https://github.com/SuxrobMamadaliyev/batl-bot111.git"
+  }
 }
