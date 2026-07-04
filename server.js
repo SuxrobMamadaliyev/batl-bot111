@@ -74,9 +74,12 @@ async function initializeBot() {
   try {
     // Initialize bot
     console.log('🤖 Botni ishga tushirish...');
-    const { bot: botInstance } = require('./bot');
+    const { bot: botInstance, initDB } = require('./bot');
     bot = botInstance;
-    
+
+    // MongoDB'ga ulanish va eski ma'lumotlarni yuklash (webhook/polling boshlanishidan oldin)
+    await initDB();
+
     console.log('✅ Bot muvaffaqiyatli yuklandi');
 
     // Use Render's external URL for webhook if available
