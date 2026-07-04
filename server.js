@@ -37,16 +37,22 @@ const PORT = process.env.PORT || 10000;
 // Check if running on Render
 const IS_RENDER = process.env.RENDER === 'true';
 
+// Validate essential environment variables
+if (!process.env.TELEGRAM_BOT_TOKEN) {
+  console.error('❌ XATOLIK: TELEGRAM_BOT_TOKEN .env faylida topilmadi');
+  process.exit(1);
+}
+
 // Webhook endpoint - defined at app level
 app.post(WEBHOOK_PATH, (req, res) => {
-  console.log('📨 Webhook update received:', JSON.stringify({
+  console.log('📨 Webhook yangilash qabul qilindi:', JSON.stringify({
     update_id: req.body.update_id,
-    message: req.body.message ? 'message received' : 'no message',
-    callback_query: req.body.callback_query ? 'callback received' : 'no callback'
+    message: req.body.message ? 'xabar qabul qilindi' : 'xabar yo\'q',
+    callback_query: req.body.callback_query ? 'callback qabul qilindi' : 'callback yo\'q'
   }));
   
   if (!bot) {
-    console.log('❌ Bot not initialized yet, skipping update');
+    console.log('❌ Bot hali ishga tushmagan, yangilash o\'tkazib yuborildi');
     return res.sendStatus(200);
   }
   
@@ -55,8 +61,10 @@ app.post(WEBHOOK_PATH, (req, res) => {
     bot.processUpdate(req.body);
     res.sendStatus(200);
   } catch (error) {
-    console.error('❌ Webhook error:', error);
-    console.error('Error details:', error.stack);
+    console.error('❌ Webhook xatosi:', error.message || error);
+    if (error.stack) {
+      console.error('Xatolik tafsilotlari:', error.stack);
+    }
     res.status(200).send('OK'); // Always return 200 to prevent Telegram from retrying
   }
 });
@@ -81,10 +89,10 @@ async function initializeBot() {
         console.log(`🌐 Webhook o'rnatilmoqda: ${fullWebhookUrl}`);
         // Set webhook for the bot
         await bot.setWebHook(fullWebhookUrl);
-        console.log('🤖 Bot webhook orqali ishga tushirildi');
+        console.log('✅ Bot webhook orqali muvaffaqiyatli ishga tushdi');
       } catch (webhookError) {
-        console.error('❌ Webhook o\'rnatishda xatolik:', webhookError.message);
-        console.log('❌ Webhook o\'rnatib bo\'lmadi, polling rejimida ishga tushirilmoqda...');
+        console.error('❌ Webhook o\'rnatishda xatolik:', webhookError.message || JSON.stringify(webhookError));
+        console.log('⚠️ Webhook o\'rnatib bo\'lmadi, polling rejimida ishga tushirilmoqda...');
         await bot.startPolling();
       }
     } else {
@@ -92,11 +100,13 @@ async function initializeBot() {
       await bot.startPolling();
     }
     
-    console.log(`🤖 ${new Date().toLocaleString()} - Bot muvaffaqiyatli ishga tushdi`);
+    console.log(`✅ ${new Date().toLocaleString()} - Bot muvaffaqiyatli ishga tushdi`);
     
   } catch (err) {
-    console.error('❌ Botni ishga tushirishda xatolik:', err);
-    console.error('Xatolik tafsilotlari:', err.stack);
+    console.error('❌ Botni ishga tushirishda xatolik:', err.message || err);
+    if (err.stack) {
+      console.error('Xatolik tafsilotlari:', err.stack);
+    }
     process.exit(1);
   }
 }
@@ -105,11 +115,11 @@ async function initializeBot() {
 const server = app.listen(PORT, '0.0.0.0', () => {
   const host = server.address().address;
   const port = server.address().port;
-  console.log(`Server is running on http://${host}:${port}`);
+  console.log(`✅ Server http://${host}:${port} da ishga tushdi`);
   
   if (IS_RENDER) {
-    console.log('Running on Render environment');
-    console.log(`External URL: ${process.env.RENDER_EXTERNAL_URL}`);
+    console.log('🌐 Render muhitida ishga tushgan');
+    console.log(`Tashqi URL: ${process.env.RENDER_EXTERNAL_URL}`);
   }
   
   // Initialize the bot after server starts
