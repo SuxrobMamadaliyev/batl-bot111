@@ -19,29 +19,6 @@ const bot = new TelegramBot(TOKEN, {
   onlyFirstMatch: true
 });
 
-// /start komandasi
-bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
-  const firstName = msg.from?.first_name || 'Foydalanuvchi';
-  
-  bot.sendMessage(
-    chatId,
-    `🎮 *Battle Botga xush kelibsiz!* \n\n` +
-    `Quyidagi tugmalar orqali botdan foydalanishingiz mumkin:`,
-    { parse_mode: 'Markdown',
-      reply_markup: {
-        keyboard: [
-          [{ text: '🛠 Battle Yaratish' }, { text: '⚔️ Battlelar' }],
-          [{ text: '📲 Kabinet' }, { text: '📊 Statistika' }],
-          [{ text: '📋 Ma\'lumotlar' }, { text: '📞 Admin' }]
-        ],
-        resize_keyboard: true,
-        one_time_keyboard: false
-      }
-    }
-  );
-});
-
 // Help command
 bot.onText(/\/help/, (msg) => {
   const chatId = msg.chat.id;
@@ -55,7 +32,8 @@ bot.onText(/\/help/, (msg) => {
   bot.sendMessage(chatId, helpText, { parse_mode: 'Markdown' });
 });
 
-// Webhook sozlamalari
+// Webhook sozlamalari (asl node-telegram-bot-api metodini saqlab qolamiz)
+const _originalSetWebHook = bot.setWebHook.bind(bot);
 bot.setWebHook = async (url) => {
   try {
     console.log(`🌐 Webhook o'rnatilmoqda: ${url}`);
@@ -80,10 +58,11 @@ bot.setWebHook = async (url) => {
   }
 };
 
-// Polling rejimida ishlatish uchun
+// Polling rejimida ishlatish uchun (asl startPolling metodini chaqiramiz, cheksiz rekursiya bo'lmasligi uchun)
+const _originalStartPolling = bot.startPolling.bind(bot);
 bot.startPolling = () => {
   console.log('🔄 Bot polling rejimida ishga tushirilmoqda...');
-  bot.start({ drop_pending_updates: true })
+  _originalStartPolling({ restart: true, polling: { params: { drop_pending_updates: true } } })
     .then(() => console.log('🤖 Bot polling rejimida muvaffaqiyatli ishga tushirildi'))
     .catch(err => console.error('❌ Polling rejimida xatolik:', err));
 };
@@ -209,7 +188,8 @@ async function createStarBattle(chatId, userId, channelLink) {
     status: 'waiting_post',
     createdAt: new Date(),
     participants: {},
-    votes: 0
+    votes: 0,
+    title: '⭐ Star Battle'
   };
   
   battles.set(battleId, battle);
@@ -378,7 +358,7 @@ async function addStarVote(battleId, userId, username, firstName) {
           // Xabarni kanalga yuboramiz
           try {
             let sentMessage;
-            const caption = `${battle.title}\n\n${userDisplayName} tomonidan qo'shildi`;
+            const caption = `${battle.title || '⭐ Star Battle'}\n\n${displayName} tomonidan qo'shildi`;
             
             if (userMessage.photo) {
               sentMessage = await bot.sendPhoto(chat.id, userMessage.photo, { caption });
@@ -389,7 +369,7 @@ async function addStarVote(battleId, userId, username, firstName) {
             } else if (userMessage.document) {
               sentMessage = await bot.sendDocument(chat.id, userMessage.document, { caption });
             } else {
-              sentMessage = await bot.sendMessage(chat.id, `${userDisplayName} tomonidan qo'shildi:\n\n${userMessage.text}`);
+              sentMessage = await bot.sendMessage(chat.id, `${displayName} tomonidan qo'shildi:\n\n${userMessage.text}`);
             }
             
             // Qatnashish tugmasi va ishtirokchilar ro'yxati
@@ -519,7 +499,7 @@ async function updateStarBattlePost(battleId) {
     } catch (error) {
       console.error('Error updating message markup:', error);
       // If editing fails, try to send a new message (fallback)
-      if (error.code === 400 && error.description.includes('message is not modified')) {
+      if (error.code === 400 && error.description && error.description.includes('message is not modified')) {
         // The message is already up to date, no need to do anything
       } else {
         throw error; // Re-throw other errors
@@ -836,30 +816,13 @@ async function updateBattlePost(battleId) {
   }
 }
 
-// Guruh ID sini olish uchun yangi buyruq
-bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
-  const welcomeMessage = `⚔️ *${BOT_NAME}* - Battle yaratish platformasiga xush kelibsiz!\n\n` +
-    `Men sizga o'z jamoangiz yoki kanalingiz uchun qiziqarli battlelar yaratishda yordam beraman.\n\n` +
-    `✨ *Qanday ishlatish mumkin?*\n` +
-    `- 🛠 *Battle Yaratish* - Yangi battle boshlash\n` +
-    `- ⚔️ *Battlelar* - Faol battlelarni ko'rish\n` +
-    `- 📊 *Statistika* - O'yin statistikangiz\n\n` +
-    `Bot versiyasi: ${BOT_VERSION}`;
-  
-  bot.sendMessage(chatId, welcomeMessage, {
-    parse_mode: 'Markdown',
-    reply_markup: mainKeyboard
-  });
-});
-
-// /start buyrug'i
+// /start buyrug'i (yagona handler - oddiy /start va referal parametrlarini boshqaradi)
 bot.onText(/\/start(.*)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const username = msg.from.username;
   const firstName = msg.from.first_name;
-  const param = match[1].trim();
+  const param = (match[1] || '').trim();
 
   registerUser(userId, username, firstName);
 
@@ -966,19 +929,13 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
   }
 
   // Oddiy start
-  const welcomeText = `
-🤖 <b>Battle Bot ga xush kelibsiz!</b>
-
-Ushbu bot orqali siz turli xil battle larni yaratishingiz va qatnashishingiz mumkin.
-
-📌 <b>Imkoniyatlar:</b>
-• Reaksiya Battle yaratish
-• Ovoz Battle yaratish
-• O'z statistikangizni ko'rish
-• Battlelar ro'yxati
-
-Quyidagi tugmalardan birini tanlang 👇
-  `;
+  const welcomeText = `⚔️ <b>${BOT_NAME}</b> - Battle yaratish platformasiga xush kelibsiz!\n\n` +
+    `Men sizga o'z jamoangiz yoki kanalingiz uchun qiziqarli battlelar yaratishda yordam beraman.\n\n` +
+    `✨ <b>Qanday ishlatish mumkin?</b>\n` +
+    `- 🛠 <b>Battle Yaratish</b> - Yangi battle boshlash\n` +
+    `- ⚔️ <b>Battlelar</b> - Faol battlelarni ko'rish\n` +
+    `- 📊 <b>Statistika</b> - O'yin statistikangiz\n\n` +
+    `Bot versiyasi: ${BOT_VERSION}`;
 
   bot.sendMessage(chatId, welcomeText, {
     parse_mode: 'HTML',
@@ -997,13 +954,13 @@ bot.on('message', async (msg) => {
   // Register user if not already registered
   registerUser(userId, username, firstName);
 
-  // Oddiy Battle yoki Ovoz Battle bosilganda
-  if (text === '🎮 Oddiy Battle' || text === 'Ovoz battle') {
-    const isStarsBattle = text === 'Ovoz battle';
+  // Oddiy Battle bosilganda (Ovoz Battle alohida blok orqali quyida boshqariladi)
+  if (text === '🎮 Oddiy Battle') {
+    const isStarsBattle = false;
     
     // Kanal linkini so'rash
     const message = await bot.sendMessage(chatId, 
-      `🔗 Iltimos, ${isStarsBattle ? 'Stars' : 'Oddiy'} Battle uchun kanal yoki guruh linkini yuboring:\n\n` +
+      `🔗 Iltimos, Oddiy Battle uchun kanal yoki guruh linkini yuboring:\n\n` +
       'Misol uchun:\n' +
       '- Kanal usernamesi: @channel_username\n' +
       '- Yoki to\'liq link: https://t.me/channel_username\n\n' +
@@ -1839,19 +1796,28 @@ bot.onText(/\/results_(\d+)/, (msg, match) => {
   bot.sendMessage(chatId, resultsText, { parse_mode: 'HTML' });
 });
 
-// Bekor qilish
+// Bekor qilish (yagona /cancel handler - battle yaratish va admin javobini ham bekor qiladi)
 bot.onText(/\/cancel/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
+  const userState = users.get(userId);
 
-  if (users.has(userId)) {
-    const userState = users.get(userId);
+  if (userState) {
+    if (userState.replyingTo) {
+      delete userState.replyingTo;
+      users.set(userId, userState);
+      bot.sendMessage(chatId, '❌ Javob yozish bekor qilindi.', {
+        reply_markup: { remove_keyboard: true }
+      });
+      return;
+    }
+
     delete userState.creating_battle;
     delete userState.battle_step;
     delete userState.battle_data;
   }
 
-  bot.sendMessage(chatId, '❌ Battle yaratish bekor qilindi', {
+  bot.sendMessage(chatId, '❌ Bekor qilindi', {
     reply_markup: mainKeyboard
   });
 });
@@ -2125,52 +2091,6 @@ bot.on('callback_query', async (callbackQuery) => {
       return;
     }
     
-    // Handle pay battle
-    if (data.startsWith('pay_battle_')) {
-      const battleId = data.split('_')[2];
-      const battle = paidBattles.get(parseInt(battleId));
-      
-      if (!battle) {
-        await bot.answerCallbackQuery(callbackQuery.id, { text: '❌ Ushbu battle topilmadi yoki tugatilgan!' });
-        return;
-      }
-      
-      // Check if user is the creator
-      if (battle.userId === userId) {
-        await bot.answerCallbackQuery(callbackQuery.id, { 
-          text: `ℹ️ Siz ushbu battle yaratuvchisisiz. Boshqa foydalanuvchilar qo'shilishini kuting.` 
-        });
-        return;
-      }
-      
-      // Show payment confirmation
-      await bot.sendMessage(
-        chatId,
-        `💰 *To'lov qilish*\n\n` +
-        `🆔 Battle ID: ${battleId}\n` +
-        `💳 To'lov miqdori: *${battle.price.toLocaleString()} so'm*\n` +
-        `📌 Kanal: ${battle.channelId}\n\n` +
-        `Battleda qatnashish uchun to'lov qilishingiz kerak. To'lov qilishni tasdiqlaysizmi?`,
-        {
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [{
-                text: `✅ Ha, to'lov qilish (${battle.price.toLocaleString()} so'm)`,
-                callback_data: `join_paid_${battleId}`
-              }],
-              [{
-                text: '❌ Bekor qilish',
-                callback_data: 'view_paid_battles'
-              }]
-            ]
-          }
-        }
-      );
-      
-      return;
-    }
-    
     // Handle other callback queries
     const username = callbackQuery.from.username || callbackQuery.from.first_name;
     
@@ -2370,28 +2290,34 @@ bot.on('callback_query', async (callbackQuery) => {
       // Mark user as voted
       userVoted.set(userKey, true);
       
-      // Create a new post for this participant with their username
-      const participantUsername = username ? `@${username}` : 'Foydalanuvchi';
-      
-      const participantPost = `🏆 ${participantUsername} \n\n` +
-        `⭐️ Stars: 5 ball\n` +
-        `👍 Reaksiya: 1 ball\n\n` 
-      
-      
-      // Send the new post to the channel
-      await bot.sendMessage(battle.channel, participantPost, {
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '🎮 Qatnashish', callback_data: `oddiy_join_${battleId}` }
-          ]]
-        }
-      });
-      
       // Notify user
       await bot.answerCallbackQuery(callbackQuery.id, { 
         text: '✅ Siz Oddiy Battle da qatnashdingiz!',
         show_alert: false
       });
+
+      // Update the original post's participant count instead of spamming a new post per join
+      try {
+        const participantUsername = username ? `@${username}` : 'Foydalanuvchi';
+        const updatedPost = `🏆 ${participantUsername} \n\n` +
+          `⭐️ Stars: 5 ball\n` +
+          `👍 Reaksiya: 1 ball\n\n` +
+          `📊 Jami ishtirokchilar: ${battle.participants.length}`;
+
+        if (battle.postMessageId && battle.postChatId) {
+          await bot.editMessageText(updatedPost, {
+            chat_id: battle.postChatId,
+            message_id: battle.postMessageId,
+            reply_markup: {
+              inline_keyboard: [[
+                { text: '🎮 Qatnashish', callback_data: `oddiy_join_${battleId}` }
+              ]]
+            }
+          }).catch(() => {});
+        }
+      } catch (e) {
+        console.error('Oddiy battle postini yangilashda xatolik:', e);
+      }
       
       // Send a random sticker to the user
       try {
@@ -2418,16 +2344,6 @@ bot.on('callback_query', async (callbackQuery) => {
         await bot.answerCallbackQuery(callbackQuery.id, { text: '❌ Siz allaqachon qatnashgansiz!' });
         return;
       }
-      
-      // Add user to participants with reaction data
-      battle.participants.push({
-        id: userId,
-        username: username,
-        timestamp: new Date(),
-        reaction: '❤️',
-        stars: 0,
-        reactionCount: 1
-      });
       
       // Mark user as voted
       userVoted.set(userKey, true);
@@ -2573,9 +2489,6 @@ bot.on('callback_query', async (callbackQuery) => {
   const messageId = callbackQuery.message.message_id;
   const userId = callbackQuery.from.id;
   
-  // Check if user is admin
-
-  
   try {
     // Handle reply button
     if (data.startsWith('reply_')) {
@@ -2628,7 +2541,6 @@ bot.on('callback_query', async (callbackQuery) => {
   }
 });
 
-// Handle admin replies to support messages
 // Pullik battle yaratish
 async function createPaidBattle(chatId, userId, channelLink, extra = {}) {
   const battleId = extra.battleId || Date.now();
@@ -2729,58 +2641,6 @@ bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
   let userState = users.get(userId) || {};
-  
-  // Handle paid battle creation flow
-  if (userState.waitingFor === 'paid_battle_id') {
-    if (text === '❌ Bekor qilish') {
-      users.delete(userId);
-      return bot.sendMessage(chatId, '❌ Bekor qilindi.', {
-        reply_markup: { remove_keyboard: true }
-      });
-    }
-    
-    // Save battle ID and ask for battle type
-    userState.tempData.battleId = text;
-    userState.waitingFor = 'paid_battle_type';
-    users.set(userId, userState);
-    
-    const keyboard = {
-      keyboard: [
-        [{ text: '❤️ Reaksiya Battle' }],
-        [{ text: 'Ovoz Battle' }],
-        [{ text: '❌ Bekor qilish' }]
-      ],
-      resize_keyboard: true,
-      one_time_keyboard: true
-    };
-    
-    return bot.sendMessage(chatId, '⚔️ Battle turini tanlang:', {
-      reply_markup: keyboard
-    });
-  }
-  
-  // Handle battle type selection
-  if (userState.waitingFor === 'paid_battle_type' && ['❤️ Reaksiya Battle', 'Ovoz Battle'].includes(text)) {
-    const battleType = text.includes('Reaksiya') ? 'reaction' : 'star';
-    const battleId = userState.tempData.battleId;
-    
-    // Create the paid battle
-    const result = await createPaidBattle(chatId, userId, battleId, {
-      battleType: battleType,
-      price: PAID_BATTLE_PRICE
-    });
-    
-    // Clear user state
-    users.delete(userId);
-    
-    if (!result.success) {
-      return bot.sendMessage(chatId, `❌ Xatolik: ${result.error}`, {
-        reply_markup: { remove_keyboard: true }
-      });
-    }
-    
-    return; // createPaidBattle will send the payment message
-  }
   
   // Handle paid battle creation flow
   if (userState.waitingFor === 'paid_battle_id') {
@@ -2985,21 +2845,6 @@ bot.on('message', async (msg) => {
   }
 });
 
-// Cancel command to stop replying
-bot.onText(/\/cancel/, (msg) => {
-  const userId = msg.from.id;
-  const userState = users.get(userId) || {};
-  
-  if (userState.replyingTo) {
-    delete userState.replyingTo;
-    users.set(userId, userState);
-    
-    bot.sendMessage(msg.chat.id, '❌ Javob yozish bekor qilindi.', {
-      reply_markup: { remove_keyboard: true }
-    });
-  }
-});
-
 // Admin commands
 bot.onText(/\/admin/, (msg) => {
   const chatId = msg.chat.id;
@@ -3055,36 +2900,4 @@ bot.onText(/\/addbalance\s+(\d+)\s+(\d+)/, async (msg, match) => {
   }
   profile.balance = (profile.balance || 0) + amount;
   users.set(parseInt(targetId), profile);
-  await bot.sendMessage(chatId, `✅ ${targetId} foydalanuvchi balansi ${amount.toLocaleString()} so\'mga oshirildi. Joriy balans: ${profile.balance.toLocaleString()} so\'m`);
-  // Try to notify the user
-  try {
-    await bot.sendMessage(parseInt(targetId), `💳 Hisobingiz ${amount.toLocaleString()} so\'mga to\'ldirildi. Yangi balans: ${profile.balance.toLocaleString()} so\'m`);
-  } catch (e) {}
-});
-
-// User: check balance
-bot.onText(/\/balance/, (msg) => {
-  const userId = msg.from.id;
-  const chatId = msg.chat.id;
-  const profile = users.get(userId) || {};
-
-});
-
-console.log('🤖 Battle Bot ishga tushdi!');
-console.log('⚡️ Bot kutish holatida...');
-
-// Stiker ID ni olish uchun
-bot.on('sticker', (msg) => {
-  const stickerId = msg.sticker.file_id;
-  console.log('📌 Stiker ID:', stickerId);
-  
-  // Faqat adminlarga javob berish
-  if (admins.includes(msg.from.username)) {
-    bot.sendMessage(msg.chat.id, 
-      `✅ Stiker ID qo'shildi!\n\n` +
-      `<code>${stickerId}</code>\n\n` +
-      `Bu ID ni kodga qo'shing.`,
-      { parse_mode: 'HTML' }
-    );
-  }
-});
+  await bot.sendMessage(chatId, `✅ ${targetId} foyda
