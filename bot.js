@@ -2881,9 +2881,70 @@ bot.on('message', async (msg) => {
         parse_mode: 'Markdown'
       });
       
-      // Notify admin
+      
+            // Notify admin
       await bot.sendMessage(userId, `✅ Javobingiz foydalanuvchiga yuborildi!`, {
         reply_markup: { remove_keyboard: true }
       });
-      
+
+      // Clear replying state for admin
+      delete userState.replyingTo;
+      users.set(userId, userState);
+
+      return;
+    } catch (error) {
+      console.error('Admin javobini yuborishda xatolik:', error);
+      try {
+        await bot.sendMessage(userId, '❌ Javob yuborishda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.', {
+          reply_markup: { remove_keyboard: true }
+        });
+      } catch (e) {
+        console.error('Xabar yuborishda qo\'shimcha xato:', e);
+      }
+      return;
+    }
+  }
+
+  // Other generic message handling could go here...
+
+});
+ 
+// Graceful shutdown handlers
+process.on('SIGINT', async () => {
+  console.log('⛔️ SIGINT qabul qilindi - bot to\'xtatilyapti...');
+  try {
+    // Stop polling if used
+    if (bot && typeof bot.stopPolling === 'function') {
+      try { bot.stopPolling(); } catch (e) {}
+    }
+  } catch (e) {
+    console.error('Botni to\'xtatishda xatolik:', e);
+  } finally {
+    process.exit(0);
+  }
+});
+
+process.on('SIGTERM', async () => {
+  console.log('⛔️ SIGTERM qabul qilindi - bot to\'xtatilyapti...');
+  try {
+    if (bot && typeof bot.stopPolling === 'function') {
+      try { bot.stopPolling(); } catch (e) {}
+    }
+  } catch (e) {
+    console.error('Botni to\'xtatishda xatolik:', e);
+  } finally {
+    process.exit(0);
+  }
+});
+
+// Log unhandled promise rejections and uncaught exceptions
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception thrown:', err);
+  // It's often best to exit after an uncaught exception in Node.js
+  process.exit(1);
+});
       
