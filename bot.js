@@ -2,6 +2,17 @@ const TelegramBot = require('node-telegram-bot-api');
 
 require('dotenv').config();
 
+const {
+  connectDB,
+  loadAllData,
+  saveUser: dbSaveUser,
+  deleteUser: dbDeleteUser,
+  saveBattle: dbSaveBattle,
+  deleteBattle: dbDeleteBattle,
+  savePaidBattle: dbSavePaidBattle,
+  deletePaidBattle: dbDeletePaidBattle,
+} = require('./db');
+
 // Bot tokenini environment variable orqali olish
 const TOKEN = process.env.BOT_TOKEN;
 if (!TOKEN) {
@@ -68,7 +79,15 @@ bot.startPolling = () => {
 };
 
 // Export the bot instance
-module.exports = { bot };
+// MongoDB'ga ulanish va mavjud ma'lumotlarni xotiraga yuklash.
+// server.js botni webhook/polling rejimida ishga tushirishdan OLDIN shu funksiyani chaqiradi,
+// shunda eski foydalanuvchi/battle ma'lumotlari yo'qolmaydi.
+async function initDB() {
+  await connectDB();
+  await loadAllData({ users, battles, paidBattles });
+}
+
+module.exports = { bot, initDB };
 
 // Private guruh linklarini boshqarish uchun funksiya
 async function handlePrivateGroupLink(chatId, channelLink) {
@@ -95,12 +114,40 @@ async function handlePrivateGroupLink(chatId, channelLink) {
     }
 }
 
-// Ma'lumotlar bazasi (xotirada)
+// Ma'lumotlar bazasi (xotirada + MongoDB bilan sinxron)
 const users = new Map();
 const battles = new Map();
 const battlePosts = new Map(); // Battle post message ID lari
 // Admin chat IDs (not usernames)
 const admins = ADMINS.length > 0 ? ADMINS : [];
+
+// Map'lar uchun avtomatik MongoDB sinxronizatsiyasi.
+// Har safar .set() chaqirilganda ma'lumot MongoDB'ga ham yoziladi,
+// .delete() chaqirilganda esa MongoDB'dan ham o'chiriladi.
+// Shu tufayli kod ichidagi mavjud users.set(...)/battles.set(...) chaqiruvlarini
+// birma-bir o'zgartirishga hojat qolmaydi.
+function attachPersistence(map, saveFn, deleteFn) {
+  const originalSet = map.set.bind(map);
+  const originalDelete = map.delete.bind(map);
+
+  map.set = (key, value) => {
+    const result = originalSet(key, value);
+    Promise.resolve(saveFn(key, value)).catch(err =>
+      console.error('❌ MongoDB saqlash xatosi:', err.message)
+    );
+    return result;
+  };
+
+  map.delete = (key) => {
+    const result = originalDelete(key);
+    Promise.resolve(deleteFn(key)).catch(err =>
+      console.error('❌ MongoDB o\'chirish xatosi:', err.message)
+    );
+    return result;
+  };
+
+  return map;
+}
 
 // Emoji reaksiyalari
 const reactions = ['❤️', '👍', '💋', '🔥', '⚡️', '😍', '🎉', '✨', '💎', '⭐️'];
@@ -110,6 +157,11 @@ const PAID_BATTLE_PRICE = process.env.PAID_BATTLE_PRICE ? parseInt(process.env.P
 
 // Pullik battlelar ro'yxati
 const paidBattles = new Map(); // Format: { battleId: { userId, channelId, messageId, price, participants: [] } }
+
+// Map'larni MongoDB bilan bog'lash (yuqoridagi attachPersistence funksiyasi orqali)
+attachPersistence(users, dbSaveUser, dbDeleteUser);
+attachPersistence(battles, dbSaveBattle, dbDeleteBattle);
+attachPersistence(paidBattles, dbSavePaidBattle, dbDeletePaidBattle);
 
 // 10 ta stiker ID (MUHIM: O'z stikerlaringizni qo'ying!)
 // Stiker ID larini olish uchun: botga istalgan stikerni yuboring, console da ID ko'rinadi
@@ -2835,69 +2887,4 @@ bot.on('message', async (msg) => {
       });
       
       // Clear reply state
-      delete userState.replyingTo;
-      users.set(userId, userState);
-      
-    } catch (error) {
-      console.error('Error sending reply:', error);
-      bot.sendMessage(userId, '❌ Xatolik yuz berdi. Foydalanuvchiga xabar yuborib bo\'lmadi.');
-    }
-  }
-});
-
-// Admin commands
-bot.onText(/\/admin/, (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  const username = msg.from.username;
-
-  if (!admins.includes(userId.toString())) {
-    bot.sendMessage(chatId, '❌ Sizda admin huquqi yo\'q!');
-    return;
-  }
-
-  const adminText = `
-🔧 <b>Admin Panel</b>
-
-📊 Statistika:
-• Foydalanuvchilar: ${users.size}
-• Faol battlelar: ${battles.size}
-
-📋 Komandalar:
-/users - Barcha foydalanuvchilar
-/battles - Barcha battlelar
-/stats - To'liq statistika
-  `;
-
-  bot.sendMessage(chatId, adminText, { parse_mode: 'HTML' });
-});
-
-// Admin: add balance to a user by ID
-bot.onText(/\/addbalance\s+(\d+)\s+(\d+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const adminId = msg.from.id.toString();
-  if (!admins.includes(adminId)) {
-    return bot.sendMessage(chatId, '❌ Sizda admin huquqi yo\'q!');
-  }
-  const targetId = match[1];
-  const amount = parseInt(match[2]);
-  if (isNaN(amount) || amount <= 0) {
-    return bot.sendMessage(chatId, '❌ Noto\'g\'ri summa. Musbat son yuboring.');
-  }
-  // Ensure user exists
-  let profile = users.get(parseInt(targetId));
-  if (!profile) {
-    profile = {
-      id: parseInt(targetId),
-      username: 'No username',
-      firstName: 'User',
-      battles_created: 0,
-      battles_participated: 0,
-      wins: 0,
-      joined_date: new Date(),
-      balance: 0
-    };
-  }
-  profile.balance = (profile.balance || 0) + amount;
-  users.set(parseInt(targetId), profile);
-  await bot.sendMessage(chatId, `✅ ${targetId} foyda
+      delete u
