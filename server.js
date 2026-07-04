@@ -38,8 +38,8 @@ const PORT = process.env.PORT || 10000;
 const IS_RENDER = process.env.RENDER === 'true';
 
 // Validate essential environment variables
-if (!process.env.TELEGRAM_BOT_TOKEN) {
-  console.error('❌ XATOLIK: TELEGRAM_BOT_TOKEN .env faylida topilmadi');
+if (!process.env.BOT_TOKEN) {
+  console.error('❌ XATOLIK: BOT_TOKEN .env faylida topilmadi');
   process.exit(1);
 }
 
@@ -74,7 +74,7 @@ async function initializeBot() {
   try {
     // Initialize bot
     console.log('🤖 Botni ishga tushirish...');
-    const { bot: botInstance } = require('./main');
+    const { bot: botInstance } = require('./bot');
     bot = botInstance;
     
     console.log('✅ Bot muvaffaqiyatli yuklandi');
