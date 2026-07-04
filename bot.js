@@ -2886,5 +2886,4 @@ bot.on('message', async (msg) => {
         reply_markup: { remove_keyboard: true }
       });
       
-      // Clear reply state
-      delete u
+      
